@@ -16,6 +16,8 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+st.set_page_config(layout="wide")
+
 # --- SUBIR ARCHIVO PERSONALIZADO ---
 archivo = st.sidebar.file_uploader("Sube tu archivo de crímenes (.geojson o .csv)", type=["geojson", "csv"])
 
