@@ -22,8 +22,12 @@ st.markdown(f"""
             color: white;
             font-family: {custom_font};
         }}
-        .stSelectbox, .stMultiSelect, .stDateInput, .stSlider, .stCheckbox {{
+        .stSelectbox label, .stMultiSelect label, .stDateInput label, .stSlider label, .stCheckbox label {{
+            color: white;
+        }}
+        .stSelectbox div[data-baseweb], .stMultiSelect div[data-baseweb], .stDateInput div[data-baseweb], .stSlider div[data-baseweb], .stCheckbox div[data-baseweb] {{
             background-color: #032f45;
+            color: white;
         }}
         .stButton>button {{
             background-color: #2ca6c5;
@@ -57,8 +61,12 @@ else:
 
 # --- SIDEBAR DE FILTROS ---
 st.sidebar.header("Filtros")
-barrios = st.sidebar.selectbox("Selecciona un barrio:", options=["Todos"] + sorted(gdf_barrios.NOMBRE.unique()))
-tipos = st.sidebar.multiselect("Tipo de Crimen", options=sorted(gdf_crimenes.tipo_crimen.unique()), default=sorted(gdf_crimenes.tipo_crimen.unique()))
+barrios_opciones = sorted(gdf_barrios.NOMBRE.dropna().unique())
+barrios = st.sidebar.selectbox("Selecciona un barrio:", options=["Todos"] + barrios_opciones)
+
+tipos_opciones = sorted(gdf_crimenes.tipo_crimen.dropna().unique())
+tipo_crimen = st.sidebar.selectbox("Tipo de Crimen", options=["Todos"] + list(tipos_opciones))
+
 sexo = st.sidebar.selectbox("Sexo de la víctima", options=["Todos", "M", "F"])
 
 rango_fecha = st.sidebar.date_input("Rango de fechas", value=(gdf_crimenes['fecha'].min(), gdf_crimenes['fecha'].max()))
@@ -71,11 +79,13 @@ filtros_sociales = {g: st.sidebar.checkbox(f"{g.replace('_', ' ').title()}", val
 gdf = gdf_crimenes.copy()
 if barrios != "Todos":
     gdf = gdf[gdf['barrio'] == barrios]
+if tipo_crimen != "Todos":
+    gdf = gdf[gdf['tipo_crimen'] == tipo_crimen]
 if sexo != "Todos":
     gdf = gdf[gdf['sexo'] == sexo]
 
-gdf = gdf[gdf['tipo_crimen'].isin(tipos)]
-gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'])
+# Validar columnas de fecha y hora
+gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
 gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
 if 'hora' in gdf.columns:
@@ -90,42 +100,45 @@ for g, activo in filtros_sociales.items():
         gdf = gdf[gdf[g] == 1]
 
 # --- PALETA DE COLORES ---
+categorias = sorted(gdf['tipo_crimen'].dropna().unique())
 cmap = ListedColormap(custom_palette)
-categorias = sorted(gdf['tipo_crimen'].unique())
 color_dict = {cat: to_hex(cmap(i / max(1, len(categorias)-1))) for i, cat in enumerate(categorias)}
 
 # --- MAPA ---
-centro = [gdf.geometry.y.mean(), gdf.geometry.x.mean()]
-m = folium.Map(location=centro, zoom_start=13, tiles="CartoDB dark_matter")
+if not gdf.empty:
+    centro = [gdf.geometry.y.mean(), gdf.geometry.x.mean()]
+    m = folium.Map(location=centro, zoom_start=13, tiles="CartoDB dark_matter")
 
-folium.GeoJson(gdf_barrios, name="Barrios",
-    style_function=lambda x: {"fillOpacity": 0, "color": "white", "weight": 1}).add_to(m)
+    folium.GeoJson(gdf_barrios, name="Barrios",
+        style_function=lambda x: {"fillOpacity": 0, "color": "white", "weight": 1}).add_to(m)
 
-for _, row in gdf.iterrows():
-    folium.CircleMarker(
-        location=[row.geometry.y, row.geometry.x],
-        radius=4,
-        color=color_dict[row['tipo_crimen']],
-        fill=True,
-        fill_color=color_dict[row['tipo_crimen']],
-        fill_opacity=0.85,
-        popup=folium.Popup(f"""
-            <b>ID:</b> {row['id']}<br>
-            <b>Tipo:</b> {row['tipo_crimen']}<br>
-            <b>Fecha:</b> {row['fecha']}<br>
-            <b>Hora:</b> {row.get('hora', 'N/A')}<br>
-            <b>Barrio:</b> {row['barrio']}<br>
-            <b>Edad:</b> {row['edad']}<br>
-            <b>Sexo:</b> {row['sexo']}<br>
-            <b>Sociales:</b><br>
-            {'✔️' if row['habitante_calle'] else '❌'} Habitante calle<br>
-            {'✔️' if row['prostitucion'] else '❌'} Prostitución<br>
-            {'✔️' if row['lgtbi'] else '❌'} LGTBI<br>
-            {'✔️' if row['grupo_etnico'] else '❌'} Grupo étnico
-        """, max_width=300)
-    ).add_to(m)
+    for _, row in gdf.iterrows():
+        folium.CircleMarker(
+            location=[row.geometry.y, row.geometry.x],
+            radius=4,
+            color=color_dict.get(row['tipo_crimen'], "#ffffff"),
+            fill=True,
+            fill_color=color_dict.get(row['tipo_crimen'], "#ffffff"),
+            fill_opacity=0.85,
+            popup=folium.Popup(f"""
+                <b>ID:</b> {row['id']}<br>
+                <b>Tipo:</b> {row['tipo_crimen']}<br>
+                <b>Fecha:</b> {row['fecha']}<br>
+                <b>Hora:</b> {row.get('hora', 'N/A')}<br>
+                <b>Barrio:</b> {row['barrio']}<br>
+                <b>Edad:</b> {row['edad']}<br>
+                <b>Sexo:</b> {row['sexo']}<br>
+                <b>Sociales:</b><br>
+                {'✔️' if row['habitante_calle'] else '❌'} Habitante calle<br>
+                {'✔️' if row['prostitucion'] else '❌'} Prostitución<br>
+                {'✔️' if row['lgtbi'] else '❌'} LGTBI<br>
+                {'✔️' if row['grupo_etnico'] else '❌'} Grupo étnico
+            """, max_width=300)
+        ).add_to(m)
 
-st_data = st_folium(m, width=1200, height=600)
+    st_data = st_folium(m, width=1200, height=600)
+else:
+    st.warning("⚠️ No hay datos disponibles con los filtros seleccionados.")
 
 # --- TABLA ---
 cols_to_drop = ['geometry', 'fecha_dt', 'hora_h'] if 'hora_h' in gdf.columns else ['geometry', 'fecha_dt']
