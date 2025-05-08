@@ -4,4 +4,3 @@ pandas
 folium
 matplotlib
 streamlit-folium
-web: streamlit run streamlit_dashboard.py --server.port $PORT --server.enableCORS false
