@@ -16,8 +16,9 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+# --- CONFIGURACIÓN DE RAILWAY ---
 st.set_page_config(layout="wide")
-st.set_page_config()
+st.title("📍 Mapa Interactivo de Crímenes en Barranquilla")
 
 # --- SUBIR ARCHIVO PERSONALIZADO ---
 archivo = st.sidebar.file_uploader("Sube tu archivo de crímenes (.geojson o .csv)", type=["geojson", "csv"])
@@ -42,10 +43,6 @@ if archivo is not None:
     st.success("✅ Archivo cargado correctamente")
 else:
     gdf_crimenes = gpd.read_file("crimenes.geojson")
-
-# --- CONFIGURACIÓN DE STREAMLIT ---
-st.set_page_config(layout="wide")
-st.title("📍 Mapa Interactivo de Crímenes en Barranquilla")
 
 # --- SIDEBAR DE FILTROS ---
 st.sidebar.header("Filtros")
