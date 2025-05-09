@@ -59,30 +59,6 @@ if archivo is not None:
 else:
     gdf_crimenes = gpd.read_file("crimenes.geojson")
 
-#---------------------------------------------------------------------------------------------
-# Insertar diagnóstico después de la carga del archivo para inspección de la columna 'hora'
-
-# Buscar el lugar donde se carga el archivo geojson
-patron_insercion = "gdf_crimenes = gpd.read_file(archivo)"
-diagnostico = """
-st.write("⏱️ Columna 'hora' (tipo):", gdf_crimenes['hora'].dtype)
-st.write("🔍 Primeros valores:", gdf_crimenes['hora'].head(5))
-"""
-
-# Insertar el diagnóstico justo después de la línea de carga
-codigo_diagnostico = codigo_modificado.replace(
-    patron_insercion,
-    f"{patron_insercion}\n{diagnostico}"
-)
-
-# Guardar nueva versión con diagnóstico
-diagnostic_path = "/mnt/data/streamlit_app_diagnostico.py"
-with open(diagnostic_path, "w", encoding="utf-8") as f:
-    f.write(codigo_diagnostico)
-
-diagnostic_path
-# ------------------------------------------------------------------------------------------------
-
 # --- SIDEBAR DE FILTROS ---
 st.sidebar.header("Filtros")
 barrios_opciones = sorted(gdf_barrios.NOMBRE.dropna().unique())
