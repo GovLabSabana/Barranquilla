@@ -88,13 +88,16 @@ if sexo != "Todos":
 gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
 gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
-if 'hora' in gdf.columns and pd.api.types.is_string_dtype(gdf['hora']):
-    gdf['hora'] = gdf['hora'].astype(str).str.strip().str[:5]
-    gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
-    gdf = gdf[gdf['hora_h'].notna()]
-    gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
+if 'hora' in gdf.columns:
+    try:
+        gdf['hora'] = gdf['hora'].astype(str).str.strip().str[:5]
+        gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
+        gdf = gdf[gdf['hora_h'].notna()]
+        gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
+    except Exception as e:
+        st.warning(f"⚠️ La columna 'hora' existe pero falló el procesamiento: {e}")
 else:
-    st.warning("⚠️ La columna 'hora' no está presente o tiene un formato incompatible.")
+    st.warning("⚠️ La columna 'hora' no está presente.")
 
 for g, activo in filtros_sociales.items():
     if activo:
