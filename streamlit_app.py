@@ -55,7 +55,7 @@ if archivo is not None:
         df = pd.read_csv(archivo)
         geometry = gpd.points_from_xy(df.longitud, df.latitud)
         gdf_crimenes = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:4326")
-    st.success("✅ Archivo cargado correctamente")
+    st.success("Archivo cargado correctamente")
 else:
     gdf_crimenes = gpd.read_file("crimenes.geojson")
 
@@ -93,7 +93,7 @@ if 'hora' in gdf.columns:
     gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
     gdf = gdf[gdf['hora_h'].between(min_hora, max_hora, inclusive='both')]
 else:
-    st.warning("⚠️ No se encontró la columna 'hora'. Se omite el filtro horario.")
+    # st.warning("No se encontró la columna 'hora'. Se omite el filtro horario.")
 
 for g, activo in filtros_sociales.items():
     if activo:
