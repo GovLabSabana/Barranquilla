@@ -93,7 +93,7 @@ if 'hora' in gdf.columns:
     gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
     gdf = gdf[gdf['hora_h'].between(min_hora, max_hora, inclusive='both')]
 else:
-    # st.warning("No se encontró la columna 'hora'. Se omite el filtro horario.")
+    st.warning("No se encontró la columna 'hora'. Se omite el filtro horario.")
 
 for g, activo in filtros_sociales.items():
     if activo:
