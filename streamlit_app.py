@@ -88,17 +88,13 @@ if sexo != "Todos":
 gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
 gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
-# Función robusta para limpiar columna 'hora'
-def limpiar_columna_hora(col):
-    col = col.fillna("")  # Rellenar NaNs con string vacío
-    extraido = col.astype(str).str.extract(r'(?P<h>\d{1,2}):(?P<m>\d{1,2})')  # Extraer componentes válidas
-    col_limpia = extraido['h'].fillna('00').str.zfill(2) + ':' + extraido['m'].fillna('00').str.zfill(2)
-    return col_limpia
+##############
+st.write("🧾 Columnas disponibles:", gdf_crimenes.columns.tolist())
+##############
 
 # Validar y filtrar por hora
 if 'hora' in gdf.columns:
     try:
-        gdf['hora'] = limpiar_columna_hora(gdf['hora'])
         gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
         gdf = gdf[gdf['hora_h'].notna()]
         gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
