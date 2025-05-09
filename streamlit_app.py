@@ -88,20 +88,25 @@ if sexo != "Todos":
 gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
 gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
+# Función robusta para limpiar columna 'hora'
+def limpiar_columna_hora(col):
+    col = col.fillna("")  # Rellenar NaNs con string vacío
+    extraido = col.astype(str).str.extract(r'(?P<h>\d{1,2}):(?P<m>\d{1,2})')  # Extraer componentes válidas
+    col_limpia = extraido['h'].fillna('00').str.zfill(2) + ':' + extraido['m'].fillna('00').str.zfill(2)
+    return col_limpia
+
+# Validar y filtrar por hora
 if 'hora' in gdf.columns:
     try:
-        gdf['hora'] = gdf['hora'].astype(str).str.strip().str[:5]
+        gdf['hora'] = limpiar_columna_hora(gdf['hora'])
         gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
         gdf = gdf[gdf['hora_h'].notna()]
         gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
     except Exception as e:
-        st.warning(f"⚠️ La columna 'hora' existe pero falló el procesamiento: {e}")
+        st.warning(f"⚠️ Error al procesar la columna 'hora': {e}")
 else:
     st.warning("⚠️ La columna 'hora' no está presente.")
 
-for g, activo in filtros_sociales.items():
-    if activo:
-        gdf = gdf[gdf[g] == 1]
 
 # --- PALETA DE COLORES ---
 categorias = sorted(gdf['tipo_crimen'].dropna().unique())
