@@ -51,6 +51,7 @@ gdf_barrios = cargar_datos()
 if archivo is not None:
     if archivo.name.endswith(".geojson"):
         gdf_crimenes = gpd.read_file(archivo)
+        st.write("🧾 Columnas en gdf_crimenes:", gdf_crimenes.columns.tolist())
     elif archivo.name.endswith(".csv"):
         df = pd.read_csv(archivo)
         geometry = gpd.points_from_xy(df.longitud, df.latitud)
