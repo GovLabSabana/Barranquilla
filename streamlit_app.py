@@ -76,7 +76,12 @@ grupos = ["habitante_calle", "prostitucion", "lgtbi", "grupo_etnico"]
 filtros_sociales = {g: st.sidebar.checkbox(f"{g.replace('_', ' ').title()}", value=False) for g in grupos}
 
 # --- FILTRADO DE DATOS ---
+if 'hora' not in gdf_crimenes.columns:
+    st.warning("⚠️ El archivo cargado no contiene la columna 'hora'.")
+st.write("🧾 Columnas en gdf_crimenes:", gdf_crimenes.columns.tolist())
+st.write("👀 Primeras filas:", gdf_crimenes.head())
 gdf = gdf_crimenes.copy()
+st.write("🧾 Columnas en gdf después del copy:", gdf.columns.tolist())
 if barrios != "Todos":
     gdf = gdf[gdf['barrio'] == barrios]
 if tipo_crimen != "Todos":
