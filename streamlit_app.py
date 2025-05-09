@@ -55,7 +55,7 @@ if archivo is not None:
         df = pd.read_csv(archivo)
         geometry = gpd.points_from_xy(df.longitud, df.latitud)
         gdf_crimenes = gpd.GeoDataFrame(df, geometry=geometry, crs="EPSG:4326")
-    st.success("Archivo cargado correctamente")
+    st.success("✅ Archivo cargado correctamente")
 else:
     gdf_crimenes = gpd.read_file("crimenes.geojson")
 
@@ -88,12 +88,13 @@ if sexo != "Todos":
 gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
 gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
-if 'hora' in gdf.columns:
-    gdf['hora'] = gdf['hora'].astype(str).str[:5]
+if 'hora' in gdf.columns and pd.api.types.is_string_dtype(gdf['hora']):
+    gdf['hora'] = gdf['hora'].astype(str).str.strip().str[:5]
     gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
-    gdf = gdf[gdf['hora_h'].between(min_hora, max_hora, inclusive='both')]
+    gdf = gdf[gdf['hora_h'].notna()]
+    gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
 else:
-    st.warning("No se encontró la columna 'hora'. Se omite el filtro horario.")
+    st.warning("⚠️ La columna 'hora' no está presente o tiene un formato incompatible.")
 
 for g, activo in filtros_sociales.items():
     if activo:
