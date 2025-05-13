@@ -39,18 +39,22 @@ st.markdown(f"""
 st.title("📍 Mapa Interactivo de Crímenes en Barranquilla")
 
 # --- SUBIR ARCHIVO PERSONALIZADO ---
-archivo = st.sidebar.file_uploader("Sube tu archivo de crímenes (.geojson o .csv)", type=["geojson", "csv"])
+archivo = st.sidebar.file_uploader(
+    "Sube tu archivo de crímenes (.geojson o .csv)", type=["geojson", "csv"])
+
 
 @st.cache_data
 def cargar_datos():
     gdf_barrios = gpd.read_file("barrios.geojson")
     return gdf_barrios
 
+
 gdf_barrios = cargar_datos()
 
 if archivo is not None:
     if archivo.name.endswith(".geojson"):
         gdf_crimenes = gpd.read_file(archivo)
+        print(gdf_crimenes.columns)
         st.write("🧾 Columnas en gdf_crimenes:", gdf_crimenes.columns.tolist())
     elif archivo.name.endswith(".csv"):
         df = pd.read_csv(archivo)
@@ -63,18 +67,23 @@ else:
 # --- SIDEBAR DE FILTROS ---
 st.sidebar.header("Filtros")
 barrios_opciones = sorted(gdf_barrios.NOMBRE.dropna().unique())
-barrios = st.sidebar.selectbox("Selecciona un barrio:", options=["Todos"] + barrios_opciones)
+barrios = st.sidebar.selectbox("Selecciona un barrio:", options=[
+                               "Todos"] + barrios_opciones)
 
 tipos_opciones = sorted(gdf_crimenes.tipo_crimen.dropna().unique())
-tipo_crimen = st.sidebar.selectbox("Tipo de Crimen", options=["Todos"] + list(tipos_opciones))
+tipo_crimen = st.sidebar.selectbox("Tipo de Crimen", options=[
+                                   "Todos"] + list(tipos_opciones))
 
 sexo = st.sidebar.selectbox("Sexo de la víctima", options=["Todos", "M", "F"])
 
-rango_fecha = st.sidebar.date_input("Rango de fechas", value=(gdf_crimenes['fecha'].min(), gdf_crimenes['fecha'].max()))
-min_hora, max_hora = st.sidebar.slider("Rango horario (hora del día)", 0, 23, (0, 23))
+rango_fecha = st.sidebar.date_input("Rango de fechas", value=(
+    gdf_crimenes['fecha'].min(), gdf_crimenes['fecha'].max()))
+min_hora, max_hora = st.sidebar.slider(
+    "Rango horario (hora del día)", 0, 23, (0, 23))
 
 grupos = ["habitante_calle", "prostitucion", "lgtbi", "grupo_etnico"]
-filtros_sociales = {g: st.sidebar.checkbox(f"{g.replace('_', ' ').title()}", value=False) for g in grupos}
+filtros_sociales = {g: st.sidebar.checkbox(
+    f"{g.replace('_', ' ').title()}", value=False) for g in grupos}
 
 # --- FILTRADO DE DATOS ---
 if 'hora' not in gdf_crimenes.columns:
@@ -92,7 +101,8 @@ if sexo != "Todos":
 
 # Validar columnas de fecha y hora
 gdf['fecha_dt'] = pd.to_datetime(gdf['fecha'], errors='coerce')
-gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) & (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
+gdf = gdf[(gdf['fecha_dt'].dt.date >= rango_fecha[0]) &
+          (gdf['fecha_dt'].dt.date <= rango_fecha[1])]
 
 ##############
 st.write("🧾 Columnas disponibles:", gdf_crimenes.columns.tolist())
@@ -101,7 +111,8 @@ st.write("🧾 Columnas disponibles:", gdf_crimenes.columns.tolist())
 # Validar y filtrar por hora
 if 'hora' in gdf.columns:
     try:
-        gdf['hora_h'] = pd.to_datetime(gdf['hora'], format='%H:%M', errors='coerce').dt.hour
+        gdf['hora_h'] = pd.to_datetime(
+            gdf['hora'], format='%H:%M', errors='coerce').dt.hour
         gdf = gdf[gdf['hora_h'].notna()]
         gdf = gdf[gdf['hora_h'].between(min_hora, max_hora)]
     except Exception as e:
@@ -109,11 +120,16 @@ if 'hora' in gdf.columns:
 else:
     st.warning("⚠️ La columna 'hora' no está presente.")
 
+# Filtrar por grupos sociales
+for grupo, filtro_activo in filtros_sociales.items():
+    if filtro_activo:
+        gdf = gdf[gdf[grupo] == True]
 
 # --- PALETA DE COLORES ---
 categorias = sorted(gdf['tipo_crimen'].dropna().unique())
 cmap = ListedColormap(custom_palette)
-color_dict = {cat: to_hex(cmap(i / max(1, len(categorias)-1))) for i, cat in enumerate(categorias)}
+color_dict = {cat: to_hex(cmap(i / max(1, len(categorias)-1)))
+              for i, cat in enumerate(categorias)}
 
 # --- MAPA ---
 if not gdf.empty:
@@ -121,7 +137,7 @@ if not gdf.empty:
     m = folium.Map(location=centro, zoom_start=13, tiles="CartoDB dark_matter")
 
     folium.GeoJson(gdf_barrios, name="Barrios",
-        style_function=lambda x: {"fillOpacity": 0, "color": "white", "weight": 1}).add_to(m)
+                   style_function=lambda x: {"fillOpacity": 0, "color": "white", "weight": 1}).add_to(m)
 
     for _, row in gdf.iterrows():
         folium.CircleMarker(
@@ -152,6 +168,7 @@ else:
     st.warning("⚠️ No hay datos disponibles con los filtros seleccionados.")
 
 # --- TABLA ---
-cols_to_drop = ['geometry', 'fecha_dt', 'hora_h'] if 'hora_h' in gdf.columns else ['geometry', 'fecha_dt']
+cols_to_drop = ['geometry', 'fecha_dt',
+                'hora_h'] if 'hora_h' in gdf.columns else ['geometry', 'fecha_dt']
 if st.checkbox("Mostrar tabla de crímenes filtrados"):
     st.dataframe(gdf.drop(columns=cols_to_drop, errors='ignore'))
