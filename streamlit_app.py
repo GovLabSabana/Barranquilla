@@ -315,26 +315,26 @@ if st.checkbox("Mostrar tabla de crímenes filtrados"):
 with tab3:
     st.subheader("📈 Predicción de casos de criminalidad por semana")
 
-    # Leer y preparar datos
+ 
     crimenes = gpd.read_file("crimenes.geojson")
     crimenes["fecha"] = pd.to_datetime(crimenes["fecha"])
 
-    # Agrupar por semana
+
     df_semanal = crimenes.groupby(pd.Grouper(key="fecha", freq="W")).size().reset_index(name="casos")
     df_prophet = df_semanal.rename(columns={"fecha": "ds", "casos": "y"})
 
-    # Filtros
+
     semanas_entrenamiento = st.slider("Semanas para entrenar el modelo", 4, len(df_prophet)-1, 12)
     semanas_prediccion = st.slider("Semanas a predecir", 1, 12, 4)
 
-    # 👇 Filtro para elegir el modelo
+ 
     modelo_seleccionado = st.selectbox("Selecciona el modelo de predicción", 
                                        ["Prophet", "Regresión lineal", "Árbol de decisión"])
 
     # Datos de entrenamiento
     train = df_prophet.tail(semanas_entrenamiento)
 
-    # 🧠 Lógica según el modelo elegido
+    
     if modelo_seleccionado == "Prophet":
         try:
             from prophet import Prophet
@@ -378,7 +378,7 @@ with tab3:
         pred_values = model.predict(X_future)
         pred_dates = pd.date_range(start=train["ds"].iloc[-1] + pd.Timedelta(weeks=1), periods=semanas_prediccion, freq="W")
 
-    # 📊 Graficar
+  
     import plotly.graph_objects as go
 
     fig = go.Figure()
