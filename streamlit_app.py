@@ -1,5 +1,5 @@
 # Versión actualizada de streamlit_app.py con semaforización
-
+from prophet import Prophet
 import streamlit as st
 import geopandas as gpd
 import pandas as pd
@@ -8,6 +8,8 @@ from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, to_hex
 from datetime import datetime
+import plotly.graph_objects as go
+
 
 # --- CONFIGURACIÓN GLOBAL ---
 custom_palette = ["#98cfe0", "#2ca6c5", "#032f45", "#f8b909", "#f38e1a"]
@@ -53,7 +55,7 @@ st.markdown(f"""
 st.title(" Mapa Interactivo de Crímenes en Barranquilla")
 
 #   Esto es para mostrar en otra tab la semaforización 
-tab1, tab2 = st.tabs(["Mapa de Puntos", "Semaforización de Barrios"])
+tab1, tab2, tab3 = st.tabs(["Mapa de Puntos", "Semaforización de Barrios", "Predicción de Crímenes"])
 
 # --- SUBIR ARCHIVO PERSONALIZADO ---
 archivo = st.sidebar.file_uploader(
@@ -307,3 +309,86 @@ if st.checkbox("Mostrar tabla de crímenes filtrados"):
     if 'hora_h' in gdf.columns:
         cols_to_drop.append('hora_h')
     st.dataframe(gdf.drop(columns=cols_to_drop, errors='ignore'))
+
+
+    # --- PREDICCIÓN DE CRÍMENES ---
+with tab3:
+    st.subheader("📈 Predicción de casos de criminalidad por semana")
+
+ 
+    crimenes = gpd.read_file("crimenes.geojson")
+    crimenes["fecha"] = pd.to_datetime(crimenes["fecha"])
+
+
+    df_semanal = crimenes.groupby(pd.Grouper(key="fecha", freq="W")).size().reset_index(name="casos")
+    df_prophet = df_semanal.rename(columns={"fecha": "ds", "casos": "y"})
+
+
+    semanas_entrenamiento = st.slider("Semanas para entrenar el modelo", 4, len(df_prophet)-1, 12)
+    semanas_prediccion = st.slider("Semanas a predecir", 1, 12, 4)
+
+ 
+    modelo_seleccionado = st.selectbox("Selecciona el modelo de predicción", 
+                                       ["Prophet", "Regresión lineal", "Árbol de decisión"])
+
+    # Datos de entrenamiento
+    train = df_prophet.tail(semanas_entrenamiento)
+
+    
+    if modelo_seleccionado == "Prophet":
+        try:
+            from prophet import Prophet
+        except ImportError:
+            from fbprophet import Prophet
+
+        model = Prophet()
+        model.fit(train)
+        future = model.make_future_dataframe(periods=semanas_prediccion, freq="W")
+        forecast = model.predict(future)
+        pred_dates = forecast["ds"]
+        pred_values = forecast["yhat"]
+
+    elif modelo_seleccionado == "Regresión lineal":
+        from sklearn.linear_model import LinearRegression
+        import numpy as np
+
+        train["semana"] = np.arange(len(train))
+        X_train = train[["semana"]]
+        y_train = train["y"]
+
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        X_future = np.arange(len(train), len(train) + semanas_prediccion).reshape(-1, 1)
+        pred_values = model.predict(X_future)
+        pred_dates = pd.date_range(start=train["ds"].iloc[-1] + pd.Timedelta(weeks=1), periods=semanas_prediccion, freq="W")
+
+    elif modelo_seleccionado == "Árbol de decisión":
+        from sklearn.tree import DecisionTreeRegressor
+        import numpy as np
+
+        train["semana"] = np.arange(len(train))
+        X_train = train[["semana"]]
+        y_train = train["y"]
+
+        model = DecisionTreeRegressor()
+        model.fit(X_train, y_train)
+
+        X_future = np.arange(len(train), len(train) + semanas_prediccion).reshape(-1, 1)
+        pred_values = model.predict(X_future)
+        pred_dates = pd.date_range(start=train["ds"].iloc[-1] + pd.Timedelta(weeks=1), periods=semanas_prediccion, freq="W")
+
+  
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_prophet["ds"], y=df_prophet["y"],
+                             mode="lines+markers", name="Casos reales", line=dict(color="red")))
+    fig.add_trace(go.Scatter(x=pred_dates, y=pred_values,
+                             mode="lines+markers", name=f"Predicción ({modelo_seleccionado})", 
+                             line=dict(color="pink", dash="dot")))
+    fig.update_layout(title="Predicción semanal de casos",
+                      xaxis_title="Fecha", yaxis_title="Número de casos",
+                      legend=dict(x=0, y=1.1, orientation="h"))
+
+    st.plotly_chart(fig, use_container_width=True)

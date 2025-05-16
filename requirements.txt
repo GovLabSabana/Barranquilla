@@ -4,3 +4,8 @@ pandas
 folium
 matplotlib
 streamlit-folium
+prophet
+scikit-learn
+plotly
+plotly-express
+plotly-io
