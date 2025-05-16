@@ -327,27 +327,66 @@ with tab3:
     semanas_entrenamiento = st.slider("Semanas para entrenar el modelo", 4, len(df_prophet)-1, 12)
     semanas_prediccion = st.slider("Semanas a predecir", 1, 12, 4)
 
-    # Entrenamiento
+    # 👇 Filtro para elegir el modelo
+    modelo_seleccionado = st.selectbox("Selecciona el modelo de predicción", 
+                                       ["Prophet", "Regresión lineal", "Árbol de decisión"])
+
+    # Datos de entrenamiento
     train = df_prophet.tail(semanas_entrenamiento)
 
-    try:
-        from prophet import Prophet
-    except ImportError:
-        from fbprophet import Prophet
+    # 🧠 Lógica según el modelo elegido
+    if modelo_seleccionado == "Prophet":
+        try:
+            from prophet import Prophet
+        except ImportError:
+            from fbprophet import Prophet
 
-    model = Prophet()
-    model.fit(train)
+        model = Prophet()
+        model.fit(train)
+        future = model.make_future_dataframe(periods=semanas_prediccion, freq="W")
+        forecast = model.predict(future)
+        pred_dates = forecast["ds"]
+        pred_values = forecast["yhat"]
 
-    # Predicción
-    future = model.make_future_dataframe(periods=semanas_prediccion, freq="W")
-    forecast = model.predict(future)
+    elif modelo_seleccionado == "Regresión lineal":
+        from sklearn.linear_model import LinearRegression
+        import numpy as np
 
-    # Gráfica
+        train["semana"] = np.arange(len(train))
+        X_train = train[["semana"]]
+        y_train = train["y"]
+
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+
+        X_future = np.arange(len(train), len(train) + semanas_prediccion).reshape(-1, 1)
+        pred_values = model.predict(X_future)
+        pred_dates = pd.date_range(start=train["ds"].iloc[-1] + pd.Timedelta(weeks=1), periods=semanas_prediccion, freq="W")
+
+    elif modelo_seleccionado == "Árbol de decisión":
+        from sklearn.tree import DecisionTreeRegressor
+        import numpy as np
+
+        train["semana"] = np.arange(len(train))
+        X_train = train[["semana"]]
+        y_train = train["y"]
+
+        model = DecisionTreeRegressor()
+        model.fit(X_train, y_train)
+
+        X_future = np.arange(len(train), len(train) + semanas_prediccion).reshape(-1, 1)
+        pred_values = model.predict(X_future)
+        pred_dates = pd.date_range(start=train["ds"].iloc[-1] + pd.Timedelta(weeks=1), periods=semanas_prediccion, freq="W")
+
+    # 📊 Graficar
+    import plotly.graph_objects as go
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df_prophet["ds"], y=df_prophet["y"],
                              mode="lines+markers", name="Casos reales", line=dict(color="red")))
-    fig.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"],
-                             mode="lines+markers", name="Predicción", line=dict(color="pink", dash="dot")))
+    fig.add_trace(go.Scatter(x=pred_dates, y=pred_values,
+                             mode="lines+markers", name=f"Predicción ({modelo_seleccionado})", 
+                             line=dict(color="pink", dash="dot")))
     fig.update_layout(title="Predicción semanal de casos",
                       xaxis_title="Fecha", yaxis_title="Número de casos",
                       legend=dict(x=0, y=1.1, orientation="h"))
