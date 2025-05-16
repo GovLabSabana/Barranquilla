@@ -4,3 +4,4 @@ pandas
 folium
 matplotlib
 streamlit-folium
+prophet

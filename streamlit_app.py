@@ -1,5 +1,5 @@
 # Versión actualizada de streamlit_app.py con semaforización
-
+from prophet import Prophet
 import streamlit as st
 import geopandas as gpd
 import pandas as pd
@@ -8,6 +8,8 @@ from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, to_hex
 from datetime import datetime
+import plotly.graph_objects as go
+
 
 # --- CONFIGURACIÓN GLOBAL ---
 custom_palette = ["#98cfe0", "#2ca6c5", "#032f45", "#f8b909", "#f38e1a"]
@@ -53,7 +55,7 @@ st.markdown(f"""
 st.title(" Mapa Interactivo de Crímenes en Barranquilla")
 
 #   Esto es para mostrar en otra tab la semaforización 
-tab1, tab2 = st.tabs(["Mapa de Puntos", "Semaforización de Barrios"])
+tab1, tab2, tab3 = st.tabs(["Mapa de Puntos", "Semaforización de Barrios", "Predicción de Crímenes"])
 
 # --- SUBIR ARCHIVO PERSONALIZADO ---
 archivo = st.sidebar.file_uploader(
@@ -307,3 +309,47 @@ if st.checkbox("Mostrar tabla de crímenes filtrados"):
     if 'hora_h' in gdf.columns:
         cols_to_drop.append('hora_h')
     st.dataframe(gdf.drop(columns=cols_to_drop, errors='ignore'))
+
+
+    # --- PREDICCIÓN DE CRÍMENES ---
+with tab3:
+    st.subheader("📈 Predicción de casos de criminalidad por semana")
+
+    # Leer y preparar datos
+    crimenes = gpd.read_file("crimenes.geojson")
+    crimenes["fecha"] = pd.to_datetime(crimenes["fecha"])
+
+    # Agrupar por semana
+    df_semanal = crimenes.groupby(pd.Grouper(key="fecha", freq="W")).size().reset_index(name="casos")
+    df_prophet = df_semanal.rename(columns={"fecha": "ds", "casos": "y"})
+
+    # Filtros
+    semanas_entrenamiento = st.slider("Semanas para entrenar el modelo", 4, len(df_prophet)-1, 12)
+    semanas_prediccion = st.slider("Semanas a predecir", 1, 12, 4)
+
+    # Entrenamiento
+    train = df_prophet.tail(semanas_entrenamiento)
+
+    try:
+        from prophet import Prophet
+    except ImportError:
+        from fbprophet import Prophet
+
+    model = Prophet()
+    model.fit(train)
+
+    # Predicción
+    future = model.make_future_dataframe(periods=semanas_prediccion, freq="W")
+    forecast = model.predict(future)
+
+    # Gráfica
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df_prophet["ds"], y=df_prophet["y"],
+                             mode="lines+markers", name="Casos reales", line=dict(color="red")))
+    fig.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"],
+                             mode="lines+markers", name="Predicción", line=dict(color="pink", dash="dot")))
+    fig.update_layout(title="Predicción semanal de casos",
+                      xaxis_title="Fecha", yaxis_title="Número de casos",
+                      legend=dict(x=0, y=1.1, orientation="h"))
+
+    st.plotly_chart(fig, use_container_width=True)
