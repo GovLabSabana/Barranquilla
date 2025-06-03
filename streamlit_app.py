@@ -10,7 +10,6 @@ from matplotlib.colors import ListedColormap, to_hex
 from datetime import datetime
 import plotly.graph_objects as go
 
-
 # --- CONFIGURACIÓN GLOBAL ---
 custom_palette = ["#98cfe0", "#2ca6c5", "#032f45", "#f8b909", "#f38e1a"]
 custom_font = "'Segoe UI', sans-serif"
